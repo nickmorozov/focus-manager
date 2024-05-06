@@ -1,0 +1,72 @@
+#!/bin/zsh
+# Main event logic function
+function _focus_logic {
+  CURRENT_FOCUS="${1}"
+
+echo "Current Focus is ${CURRENT_FOCUS}"
+
+echo ${CURRENT_FOCUS} > ~/.focus # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth 
+
+if [ "${CURRENT_FOCUS}" = "Do Not Disturb" ]; then
+  # Use pkill to close the apps
+elif [ "${CURRENT_FOCUS}" = "Work" ]; then
+  echo "Setting Arc as default browser..."
+  # Open apps
+else
+  echo "Default Focus"
+  # Use pkill to close the apps
+fi
+
+}
+
+# Helpers, rely on Shortcuts
+function _get_focus {
+osascript <<EOF
+try
+  tell application "Shortcuts"
+    run shortcut named "Get Focus"
+    return result
+  end tell
+end try
+EOF
+}
+
+function _set_focus {
+osascript <<EOF
+try
+  tell application "Shortcuts"
+    run shortcut named "Set Focus" with input "${1}"
+    return result
+  end tell
+end try
+EOF
+}
+
+# Check provided arguments. Not bothering with getopts this time.
+
+if [[ '--get' = "${1}" || '-g' = "${1}" ]]; then
+  # Just get focus name and exit
+  _get_focus
+elif [[ '--set' = "${1}" || '-s' = "${1}" ]]; then
+  # Set focus, pass output to _focus_logic and exit
+  _focus_logic "$(_set_focus "${2}")" # (unsets focus if $2 is empty)
+else
+  # Pass current focus into "event logic"
+  _focus_logic "$(_get_focus)"
+fi
+
+# Unset local functions
+unfunction _get_focus
+unfunction _set_focus
+unfunction _focus_logic
+
+# Define the cron job
+CRON_JOB="* * * * * ${0}" # crontab didn't see my $PATH here
+
+# Check if the cron job already exists
+if ! crontab -l | grep -q "$CRON_JOB"; then
+    # If it doesn't exist, add it to the crontab
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+fi
+
+exit 0
