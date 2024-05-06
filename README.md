@@ -1,7 +1,8 @@
 # focus-manager
 Simple script to handle OSX Focus getting/setting and running logic on outside focus change. 
-Uses Shortcuts - OSX only, but focus is synced to iOS/watchOS by default.
-Uses crontab for periodic launch, which means that there's a 1 minute delay before logic runs on exgernal focus change (e.g., on schedule).
+
+1. Uses Shortcuts - OSX only, but focus is synced to iOS/watchOS by default.
+1. Uses crontab for periodic launch, which means that there's a 1 minute delay before logic runs on exgernal focus change (e.g., on schedule).
 
 ### Dependensies
 
