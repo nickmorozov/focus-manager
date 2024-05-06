@@ -1,21 +1,58 @@
 #!/bin/zsh
+#
+# Click Test: https://google.com
+#
 # Main event logic function
 function _focus_logic {
   CURRENT_FOCUS="${1}"
+  PREVIOUS_FOCUS=""
+  # Get last Focus value
+  if [[ -f ~/.focus ]]; then
+    PREVIOUS_FOCUS=$(<~/.focus)
+  fi
 
 echo "Current Focus is ${CURRENT_FOCUS}"
 
+if [[ "${PREVIOUS_FOCUS}" = "${CURRENT_FOCUS}" ]]; then
+  echo "Same as before, exiting..."
+  exit 0
+fi
+
+# Store new focus
 echo ${CURRENT_FOCUS} > ~/.focus # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth 
 
+function _set_arc {
+  echo "Setting Arc as the default browser."
+  defaultbrowser browser
+}
+
+function _set_safari {
+  echo "Setting Safari as the default browser."
+  defaultbrowser safari
+}
+
 if [ "${CURRENT_FOCUS}" = "Do Not Disturb" ]; then
+  _set_safari
   # Use pkill to close the apps
 elif [ "${CURRENT_FOCUS}" = "Work" ]; then
-  echo "Setting Arc as default browser..."
+  _set_arc
+
   # Open apps
 else
   echo "Default Focus"
+  _set_safari
   # Use pkill to close the apps
 fi
+
+# Finally run Shortcut
+osascript <<EOF
+try
+  tell application "Shortcuts"
+    run shortcut named "Focus Logic"
+    return result
+  end tell
+end try
+EOF
 
 }
 
