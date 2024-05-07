@@ -3,9 +3,50 @@
 # Click Test: https://google.com
 #
 
-LOG="/tmp/focus.log"
+function _init {
+  # Define the lines we need for crontab:
+  CRON_SHELL="SHELL="
+  CRON_JOB="* * * * * ${0} >> $LOG"
 
-touch $LOG && echo "" && echo $(date)
+  # Check if the SHELL is already set
+  if ! crontab -l | grep -q "${CRON_SHELL}"; then
+    # If it doesn't exist, add it to the crontab at the top
+    (echo "${CRON_SHELL}$(echo $SHELL)"; echo ""; crontab -l 2>/dev/null) | crontab -
+  fi
+
+  # Check if the cron job already exists
+  if ! crontab -l | grep -q "${CRON_JOB}"; then
+    # If it doesn't exist, add it to the crontab
+    (crontab -l 2>/dev/null; echo "${CRON_JOB}") | crontab -
+  fi
+}
+
+function _main {
+  LOG="/tmp/focus.log"
+
+  touch $LOG && echo "" && echo $(date)
+
+  IS_SHORTCUTS_OPEN="$(_is_running "Shortcuts")"
+
+  # Check provided arguments. Not bothering with getopts this time.
+
+  if [[ '--get' = "${1}" || '-g' = "${1}" ]]; then
+    # Just get focus name and exit
+    _get_focus
+  elif [[ '--set' = "${1}" || '-s' = "${1}" ]]; then
+    # Set focus, pass output to _focus_logic and exit
+    _focus_logic "$(_set_focus "${2}")" # (unsets focus if $2 is empty)
+  else
+    echo $(_get_focus)
+    # Pass current focus into "event logic"
+    _focus_logic "$(_get_focus)"
+  fi
+
+  # Quit Shortcuts unless it was running
+  if [ $IS_SHORTCUTS_OPEN = false ]; then
+    _quit "Shortcuts"
+  fi
+}
 
 # Main event logic function
 function _set_arc {
@@ -19,6 +60,8 @@ function _set_safari {
 }
 
 function _focus_logic {
+  echo "Running Focus Logic"
+
   CURRENT_FOCUS="${1}"
   PREVIOUS_FOCUS=""
 
@@ -31,7 +74,7 @@ function _focus_logic {
 
   if [[ "${PREVIOUS_FOCUS}" = "${CURRENT_FOCUS}" ]]; then
     echo "Same as before, exiting..."
-    exit 0
+    return 0
   fi
 
   # Store new focus
@@ -51,7 +94,7 @@ function _focus_logic {
   fi
 
   # Finally run Shortcut
-  echo "Running Fucus Logic Shortcut"
+  echo "Running Focus Logic Shortcut"
   osascript <<EOF
 try
   tell application "Shortcuts"
@@ -71,6 +114,9 @@ try
     run shortcut named "Get Focus"
     return result
   end tell
+
+  on error errMsg
+  log "Error running shortcut: " & errMsg
 end try
 EOF
 }
@@ -82,43 +128,50 @@ try
     run shortcut named "Set Focus" with input "${1}"
     return result
   end tell
+
+  on error errMsg
+  log "Error running shortcut: " & errMsg
 end try
 EOF
 }
 
-# Check provided arguments. Not bothering with getopts this time.
+# Check if Shortcuts is running
+function _is_running {
+  osascript <<EOF
+try
+  tell application "System Events"
+    (name of processes) contains "${1}"
+    return result
+  end tell
 
-if [[ '--get' = "${1}" || '-g' = "${1}" ]]; then
-  # Just get focus name and exit
-  _get_focus && exit 0 || exit 1
-elif [[ '--set' = "${1}" || '-s' = "${1}" ]]; then
-  # Set focus, pass output to _focus_logic and exit
-  _focus_logic "$(_set_focus "${2}")" && exit 0 || exit 1 # (unsets focus if $2 is empty)
-else
-  echo $(_get_focus)
-  # Pass current focus into "event logic"
-  _focus_logic "$(_get_focus)" && exit 0 || exit 1
-fi
+  on error errMsg
+  log "Error running shortcut: " & errMsg
+end try
+EOF
+}
+
+function _quit {
+  osascript <<EOF
+try
+  tell application "${1}" to quit
+
+  on error errMsg
+  log "Error running shortcut: " & errMsg
+end try
+EOF
+}
+
+# Run the main scriupt
+_init
+_main $@
 
 # Unset local functions
+unfunction _init
+unfunction _main
 unfunction _get_focus
 unfunction _set_focus
 unfunction _focus_logic
-
-# Define the lines we need for crontab:
-CRON_SHELL="SHELL="
-CRON_JOB="* * * * * ${0} >> $LOG"
-
-# Check if the SHELL is already set
-if ! crontab -l | grep -q "${CRON_SHELL}"; then
-  # If it doesn't exist, add it to the crontab at the top
-  (echo "${CRON_SHELL}$(echo $SHELL)"; echo ""; crontab -l 2>/dev/null) | crontab -
-fi
-
-# Check if the cron job already exists
-if ! crontab -l | grep -q "${CRON_JOB}"; then
-  # If it doesn't exist, add it to the crontab
-  (crontab -l 2>/dev/null; echo "${CRON_JOB}") | crontab -
-fi
+unfunction _is_running
+unfunction _quit
 
 exit 0
