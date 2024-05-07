@@ -7,7 +7,8 @@ Simple script to handle OSX Focus getting/setting and running logic on outside f
 ### Dependensies
 
 * [defaultbrowser](https://github.com/kerma/defaultbrowser) - changes default browser (OSX asks you to confirm each time)
-* [Homebrew](https://brew.sh) - optional, helps with install
+* [Homebrew](https://brew.sh) - _optional_, helps with install
+* [Actions](https://apps.apple.com/ca/app/actions/id1586435171) - _optional_, useful Shortcuts actions
 
 ### Installation
 1. Install defaultbrowser with `brew install defaultbrowser`
