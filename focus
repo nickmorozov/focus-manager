@@ -2,25 +2,12 @@
 #
 # Click Test: https://google.com
 #
+
+LOG="/tmp/focus.log"
+
+touch $LOG && echo "" && echo $(date)
+
 # Main event logic function
-function _focus_logic {
-  CURRENT_FOCUS="${1}"
-  PREVIOUS_FOCUS=""
-  # Get last Focus value
-  if [[ -f ~/.focus ]]; then
-    PREVIOUS_FOCUS=$(<~/.focus)
-  fi
-
-echo "Current Focus is ${CURRENT_FOCUS}"
-
-if [[ "${PREVIOUS_FOCUS}" = "${CURRENT_FOCUS}" ]]; then
-  echo "Same as before, exiting..."
-  exit 0
-fi
-
-# Store new focus
-echo ${CURRENT_FOCUS} > ~/.focus # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth 
-
 function _set_arc {
   echo "Setting Arc as the default browser."
   defaultbrowser browser
@@ -31,21 +18,41 @@ function _set_safari {
   defaultbrowser safari
 }
 
-if [ "${CURRENT_FOCUS}" = "Do Not Disturb" ]; then
-  _set_safari
-  # Use pkill to close the apps
-elif [ "${CURRENT_FOCUS}" = "Work" ]; then
-  _set_arc
+function _focus_logic {
+  CURRENT_FOCUS="${1}"
+  PREVIOUS_FOCUS=""
 
-  # Open apps
-else
-  echo "Default Focus"
-  _set_safari
-  # Use pkill to close the apps
-fi
+  # Get last Focus value
+  if [[ -f ~/.focus ]]; then
+    PREVIOUS_FOCUS=$(<~/.focus)
+  fi
 
-# Finally run Shortcut
-osascript <<EOF
+  echo "Current Focus is ${CURRENT_FOCUS}"
+
+  if [[ "${PREVIOUS_FOCUS}" = "${CURRENT_FOCUS}" ]]; then
+    echo "Same as before, exiting..."
+    exit 0
+  fi
+
+  # Store new focus
+  echo ${CURRENT_FOCUS} > ~/.focus # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth
+
+  if [ "${CURRENT_FOCUS}" = "Do Not Disturb" ]; then
+    _set_safari
+    # Use pkill to close the apps
+  elif [ "${CURRENT_FOCUS}" = "Work" ]; then
+    _set_arc
+
+    # Open apps
+  else
+    echo "Default Focus"
+    _set_safari
+    # Use pkill to close the apps
+  fi
+
+  # Finally run Shortcut
+  echo "Running Fucus Logic Shortcut"
+  osascript <<EOF
 try
   tell application "Shortcuts"
     run shortcut named "Focus Logic"
@@ -58,7 +65,7 @@ EOF
 
 # Helpers, rely on Shortcuts
 function _get_focus {
-osascript <<EOF
+  osascript <<EOF
 try
   tell application "Shortcuts"
     run shortcut named "Get Focus"
@@ -69,7 +76,7 @@ EOF
 }
 
 function _set_focus {
-osascript <<EOF
+  osascript <<EOF
 try
   tell application "Shortcuts"
     run shortcut named "Set Focus" with input "${1}"
@@ -83,13 +90,14 @@ EOF
 
 if [[ '--get' = "${1}" || '-g' = "${1}" ]]; then
   # Just get focus name and exit
-  _get_focus
+  _get_focus && exit 0 || exit 1
 elif [[ '--set' = "${1}" || '-s' = "${1}" ]]; then
   # Set focus, pass output to _focus_logic and exit
-  _focus_logic "$(_set_focus "${2}")" # (unsets focus if $2 is empty)
+  _focus_logic "$(_set_focus "${2}")" && exit 0 || exit 1 # (unsets focus if $2 is empty)
 else
+  echo $(_get_focus)
   # Pass current focus into "event logic"
-  _focus_logic "$(_get_focus)"
+  _focus_logic "$(_get_focus)" && exit 0 || exit 1
 fi
 
 # Unset local functions
@@ -97,13 +105,20 @@ unfunction _get_focus
 unfunction _set_focus
 unfunction _focus_logic
 
-# Define the cron job
-CRON_JOB="* * * * * ${0}" # crontab didn't see my $PATH here
+# Define the lines we need for crontab:
+CRON_SHELL="SHELL="
+CRON_JOB="* * * * * ${0} >> $LOG"
+
+# Check if the SHELL is already set
+if ! crontab -l | grep -q "${CRON_SHELL}"; then
+  # If it doesn't exist, add it to the crontab at the top
+  (echo "${CRON_SHELL}$(echo $SHELL)"; echo ""; crontab -l 2>/dev/null) | crontab -
+fi
 
 # Check if the cron job already exists
-if ! crontab -l | grep -q "$CRON_JOB"; then
-    # If it doesn't exist, add it to the crontab
-    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+if ! crontab -l | grep -q "${CRON_JOB}"; then
+  # If it doesn't exist, add it to the crontab
+  (crontab -l 2>/dev/null; echo "${CRON_JOB}") | crontab -
 fi
 
 exit 0
