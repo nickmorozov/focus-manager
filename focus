@@ -2,6 +2,7 @@
 #
 # Click Test: https://google.com
 #
+WD="${0:A:h}"
 
 function _init {
   # Define the lines we need for crontab:
@@ -48,17 +49,6 @@ function _main {
   fi
 }
 
-# Main event logic function
-function _set_arc {
-  echo "Setting Arc as the default browser."
-  defaultbrowser browser
-}
-
-function _set_safari {
-  echo "Setting Safari as the default browser."
-  defaultbrowser safari
-}
-
 function _focus_logic {
   echo "Running Focus Logic"
 
@@ -66,8 +56,12 @@ function _focus_logic {
   PREVIOUS_FOCUS=""
 
   # Get last Focus value
-  if [[ -f ~/.focus ]]; then
-    PREVIOUS_FOCUS=$(<~/.focus)
+  if [[ -f "${HOME}/.focus" ]]; then
+    PREVIOUS_FOCUS=$(<"${HOME}/.focus")
+  fi
+
+  if [[ -z $CURRENT_FOCUS ]]; then
+    CURRENT_FOCUS="Default"
   fi
 
   echo "Current Focus is ${CURRENT_FOCUS}"
@@ -78,20 +72,7 @@ function _focus_logic {
   fi
 
   # Store new focus
-  echo ${CURRENT_FOCUS} > ~/.focus # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth
-
-  if [ "${CURRENT_FOCUS}" = "Do Not Disturb" ]; then
-    _set_safari
-    # Use pkill to close the apps
-  elif [ "${CURRENT_FOCUS}" = "Work" ]; then
-    _set_arc
-
-    # Open apps
-  else
-    echo "Default Focus"
-    _set_safari
-    # Use pkill to close the apps
-  fi
+  echo ${CURRENT_FOCUS} > "${HOME}/.focus" # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth
 
   # Finally run Shortcut
   echo "Running Focus Logic Shortcut"
