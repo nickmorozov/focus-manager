@@ -50,8 +50,6 @@ function _main {
 }
 
 function _focus_logic {
-  echo "Running Focus Logic"
-
   CURRENT_FOCUS="${1}"
   PREVIOUS_FOCUS=""
 
@@ -72,19 +70,7 @@ function _focus_logic {
   fi
 
   # Store new focus
-  echo ${CURRENT_FOCUS} > "${HOME}/.focus" # No use yet. Could have some more config, e.g., previous focus for toggling back-and-forth
-
-  # Finally run Shortcut
-  echo "Running Focus Logic Shortcut"
-  osascript <<EOF
-try
-  tell application "Shortcuts"
-    run shortcut named "Focus Logic"
-    return result
-  end tell
-end try
-EOF
-
+  echo ${CURRENT_FOCUS} > "${HOME}/.focus"
 }
 
 # Helpers, rely on Shortcuts
